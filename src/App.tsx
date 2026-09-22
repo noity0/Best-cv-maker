@@ -102,6 +102,19 @@ export default function App() {
 
   // Send message in AI Interview
   const handleSendMessage = async (text: string) => {
+    const lowerText = text.toLowerCase().trim();
+
+    // If candidate specifically requested to generate / make the CV right now
+    if (
+      lowerText === 'generate my complete cv now!' ||
+      lowerText === 'generate complete cv now' ||
+      lowerText === 'generate full cv now' ||
+      lowerText === 'make complete cv'
+    ) {
+      handleGenerateCV();
+      return;
+    }
+
     const userMsg: ChatMessage = {
       id: `usr-${Date.now()}`,
       role: 'user',
@@ -110,24 +123,48 @@ export default function App() {
     };
 
     // Immediate client-side extraction of real candidate details
-    const lowerText = text.toLowerCase().trim();
     let clientExtractedName = '';
-    if (lowerText.startsWith('my name is ') || lowerText.startsWith("i am ") || lowerText.startsWith("i'm ")) {
-      clientExtractedName = text.replace(/^(my name is|i am|i'm)\s+/i, '').split(/[,\.\n]/)[0].trim();
-    } else if (!text.includes('@') && !text.includes('http') && text.split(/\s+/).length <= 4 && text.length > 2 && !lowerText.includes('work') && !lowerText.includes('job') && !lowerText.includes('engineer') && !lowerText.includes('manager') && !cvMemory.contact.fullName) {
-      clientExtractedName = text.replace(/[,\.]/g, '').trim();
+    const nameRegex = /(?:my\s*name\s*(?:is)?|full\s*name\s*(?:is)?|name\s*(?:is|:)|i\s*am|i\'m)\s+([a-zA-Z\s]+?)(?:and|\.|\,|\n|i\s+have|country|degree|$)/i;
+    const nameMatch = text.match(nameRegex);
+    if (nameMatch && nameMatch[1].trim().length > 1) {
+      const raw = nameMatch[1].replace(/\b(i|have|am|a|an|the|my|and|in)\b/gi, '').trim();
+      if (raw.length > 1) {
+        clientExtractedName = raw.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      }
+    } else if (!text.includes('@') && !text.includes('http') && text.split(/\s+/).length <= 4 && text.length > 2 && !lowerText.includes('cv') && !lowerText.includes('work') && !lowerText.includes('job') && !cvMemory.contact.fullName) {
+      clientExtractedName = text.replace(/[,\.]/g, '').trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    }
+
+    let clientExtractedLoc = '';
+    const locRegex = /(?:country\s*(?:is|:)?|city\s*(?:is|:)?|location\s*(?:is|:)?|living\s*in|based\s*in|from|in)\s+([a-zA-Z\s]+?)(?:and|\.|\,|\n|$)/i;
+    const locMatch = text.match(locRegex);
+    if (locMatch && locMatch[1].trim().length > 1) {
+      const cleanLoc = locMatch[1].replace(/\b(and|i|have|the)\b/gi, '').trim();
+      if (cleanLoc.length > 1) {
+        clientExtractedLoc = cleanLoc.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      }
     }
 
     const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     const phoneMatch = text.match(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
 
+    let currentJob = selectedJob;
+    if (lowerText.includes('ai engineer') || lowerText.includes('machine learning')) {
+      const aiPreset = JOB_PRESETS.find(p => p.id === 'ai-engineer');
+      if (aiPreset) {
+        currentJob = aiPreset;
+        setSelectedJob(aiPreset);
+      }
+    }
+
     let updatedMemory = { ...cvMemory };
-    if (clientExtractedName || emailMatch || phoneMatch) {
+    if (clientExtractedName || clientExtractedLoc || emailMatch || phoneMatch) {
       updatedMemory = {
         ...updatedMemory,
         contact: {
           ...updatedMemory.contact,
           ...(clientExtractedName ? { fullName: clientExtractedName } : {}),
+          ...(clientExtractedLoc ? { location: clientExtractedLoc } : {}),
           ...(emailMatch ? { email: emailMatch[0] } : {}),
           ...(phoneMatch ? { phone: phoneMatch[0] } : {})
         }
@@ -143,17 +180,17 @@ export default function App() {
       const apiResult = await sendChatMessageToAI(
         newHistory.map(m => ({ role: m.role, content: m.content })),
         updatedMemory,
-        selectedJob
+        currentJob
       );
 
       // Merge extracted data into CV memory, preserving candidate's real personal information
       if (apiResult.extractedData) {
         setCvMemory(prev => {
           const incomingContact: Partial<ContactInfo> = apiResult.extractedData?.contact || {};
-          const finalName = prev.contact.fullName || incomingContact.fullName || clientExtractedName;
-          const finalEmail = prev.contact.email || incomingContact.email || (emailMatch ? emailMatch[0] : '');
-          const finalPhone = prev.contact.phone || incomingContact.phone || (phoneMatch ? phoneMatch[0] : '');
-          const finalLocation = prev.contact.location || incomingContact.location || '';
+          const finalName = incomingContact.fullName || clientExtractedName || prev.contact.fullName;
+          const finalEmail = incomingContact.email || (emailMatch ? emailMatch[0] : '') || prev.contact.email;
+          const finalPhone = incomingContact.phone || (phoneMatch ? phoneMatch[0] : '') || prev.contact.phone;
+          const finalLocation = incomingContact.location || clientExtractedLoc || prev.contact.location;
 
           const updated: CVMemoryData = {
             ...prev,
@@ -172,13 +209,19 @@ export default function App() {
             },
             experience: apiResult.extractedData.experience && apiResult.extractedData.experience.length > 0
               ? apiResult.extractedData.experience
-              : prev.experience
+              : prev.experience,
+            education: apiResult.extractedData.education && apiResult.extractedData.education.length > 0
+              ? apiResult.extractedData.education
+              : prev.education,
+            projects: apiResult.extractedData.projects && apiResult.extractedData.projects.length > 0
+              ? apiResult.extractedData.projects
+              : prev.projects
           };
           return updated;
         });
 
         // Show memory extraction feedback
-        setLastExtractedAlert(`Captured real info & saved into AI memory for ${selectedJob.title}`);
+        setLastExtractedAlert(`Captured real info & saved into AI memory for ${currentJob.title}`);
         setTimeout(() => setLastExtractedAlert(null), 5000);
       }
 
@@ -199,6 +242,11 @@ export default function App() {
       };
 
       setMessages(prev => [...prev, assistantMsg]);
+
+      // If candidate explicitly asked to make cv and completeness is high, generate immediately!
+      if (lowerText.includes('make cv') || lowerText.includes('generate cv')) {
+        handleGenerateCV();
+      }
     } catch (err) {
       console.error('Chat error:', err);
     } finally {

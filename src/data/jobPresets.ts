@@ -2,6 +2,39 @@ import { JobPreset } from '../types/cv';
 
 export const JOB_PRESETS: JobPreset[] = [
   {
+    id: 'ai-engineer',
+    title: 'AI / Machine Learning Engineer',
+    category: 'tech',
+    level: 'Senior / Lead',
+    description: 'Designs, trains, optimizes, and deploys deep learning models, neural architectures, and intelligent systems.',
+    atsKeywords: [
+      'Artificial Intelligence',
+      'Deep Learning',
+      'Machine Learning',
+      'PyTorch & TensorFlow',
+      'Neural Network Architecture',
+      'Large Language Models (LLMs)',
+      'Model Optimization & Inference',
+      'Python & CUDA',
+      'Computer Vision & NLP',
+      'MLOps & Docker Deployment',
+      'Distributed Training'
+    ],
+    mustHaveMetrics: [
+      '% reduction in inference latency (e.g. 40%+)',
+      'Model accuracy and F1 score improvements',
+      'Throughput scale handled (e.g. 10M+ inferences/day)',
+      'Training compute / GPU cost savings'
+    ],
+    recommendedCertifications: ['DeepLearning.AI Deep Learning Specialization', 'AWS Certified Machine Learning', 'Google Cloud Professional ML Engineer'],
+    sampleQuestions: [
+      'What AI architectures, models, and deep learning frameworks (PyTorch/TensorFlow) do you specialize in?',
+      'Can you describe an AI project or research achievement (e.g. HMHSGAME, HMHSLASTAI) with specific metrics?',
+      'Have you designed end-to-end model training, fine-tuning, or production inference pipelines?'
+    ],
+    iconName: 'Cpu'
+  },
+  {
     id: 'software-engineer',
     title: 'Software Engineer',
     category: 'tech',

@@ -1,5 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import dotenv from 'dotenv';
 import { processChatInterview, processGenerateCompleteCV } from './geminiService';
+
+dotenv.config();
 
 export async function handleApiRequest(req: IncomingMessage, res: ServerResponse, next?: () => void) {
   const url = req.url?.split('?')[0];
