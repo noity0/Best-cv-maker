@@ -1,0 +1,6 @@
+{
+  "name": "AI Job-Targeted CV Builder",
+  "description": "A mobile-first, intelligent CV and resume builder that conducts job-tailored AI interviews to gather high-impact experience and generates ATS-optimized resumes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
